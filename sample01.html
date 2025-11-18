@@ -22,8 +22,32 @@
         }
         h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
         h2 { color: #2980b9; margin-top: 30px; }
-        code { background: #eee; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
-        pre { background: #2d3436; color: #ecf0f1; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        
+        /* --- 修正箇所: コードブロックのスタイル --- */
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            background-color: #f0f0f0; /* 薄いグレー */
+            color: #c7254e;           /* 赤文字（インライン用） */
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #272822; /* 濃いグレー（エディタ風） */
+            color: #f8f8f2;           /* 白文字 */
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+        }
+        /* preタグの中のcodeタグは色を変えない */
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+        }
+        /* --------------------------------------- */
+
         .download-btn {
             display: block;
             width: 100%;
