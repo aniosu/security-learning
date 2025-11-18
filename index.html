@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Learning CTF</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+        }
+        .problem-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            border-left: 5px solid #3498db;
+        }
+        .problem-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+        .problem-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2980b9;
+        }
+        .problem-tags span {
+            background-color: #ecf0f1;
+            color: #7f8c8d;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            margin-right: 5px;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🛡️ Security Learning CTF</h1>
+        <p class="subtitle">構築と攻撃の両面から学ぶ、実践的CTF問題集</p>
+    </header>
+
+    <div class="problem-list">
+
+        <div class="problem-card">
+            <div class="problem-title">Question 01: 社内管理ポータル (SQLi)</div>
+            <div class="problem-tags">
+                <span>Web</span>
+                <span>SQL Injection</span>
+                <span>Docker</span>
+                <span>Difficulty: ★☆☆</span>
+            </div>
+            <p>ある企業の社内管理ポータルに脆弱性が見つかりました。<br>
+            Docker環境を手元で立ち上げ、認証を回避し、隠されたフラグを特定してください。</p>
+            
+            <a href="https://github.com/aniosu/security-learning/tree/main/sample01" class="btn" target="_blank">
+                問題ファイルを見る (GitHub)
+            </a>
+        </div>
+
+        </div>
+
+    <footer style="text-align: center; margin-top: 50px; color: #aaa; font-size: 0.9rem;">
+        &copy; 2025 Security Learning Project
+    </footer>
+
+</body>
+</html>
