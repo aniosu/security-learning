@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>構築解説: この脆弱環境はどう作られたか？</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        h1, h2, h3 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.5em; }
+        h3 { font-size: 1.2em; }
+        code {
+            font-family: monospace;
+            background-color: #eee;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        pre code { padding: 0; background: none; }
+        .info-box {
+            background-color: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🛠️ 構築解説: この脆弱環境はどう作られたか？</h1>
+
+    <div class="info-box">
+        <strong>ようこそ！</strong> このページは、あなたが攻略した「社内管理ポータル」が、どのような「仕組み」と「設定」で動いていたのかを解説する、「構築側」のドキュメントです。
+    </div>
+
+    <p>「攻撃側（`writeup.html`）」の解説では、<strong>どうやって解くか？</strong>を学びました。<br>
+        この「構築側」の解説では、<strong>なぜ、この脆弱性が"成立"しているのか？</strong>を、サーバーの裏側から学んでいきましょう。</p>
+
+    <p>この環境は、大きく分けて以下の3つの「層」から成り立っています。</p>
+    <ol>
+        <li><strong>レベル1: アプリケーション層</strong>（PHPコードの「脆弱性」）</li>
+        <li><strong>レベル2: サービス連携層</strong>（Nginx, PHP, MySQLの「連携」）</li>
+        <li><strong>レベル3: コンテナ構築層</strong>（Dockerによる「環境」そのもの）</li>
+    </ol>
+
+    <hr>
+
+    <h2>レベル1: アプリケーション層 (<code>index.php</code>)</h2>
+    <p>すべての元凶は、<code>index.php</code>にあった、この1行のコードです。</p>
+    
+    <h3>脆弱なコード</h3>
+    <pre><code class="language-php">$sql = "SELECT * FROM users WHERE username = '{$username}' AND password = '{$password}'";</code></pre>
+    <p>これは、ユーザーが入力した<code>$username</code>という「データ」を、<code>SELECT...</code>という「SQLコマンド」に、そのまま「文字列」として連結（結合）してしまっています。</p>
+    <p>これにより、攻撃者が<code>' OR 1=1 -- </code>のような「文字列」を送ってくると、それが「データ」ではなく「コマンドの一部」として解釈されてしまい、SQLインジェクションが成立していました。</p>
+
+    <h3>対策コード（プレースホルダ）</h3>
+    <p><code>writeup.html</code>でも解説した通り、この脆弱性は「プレースホルダ（<code>prepare</code> / <code>execute</code>）」を使うことで100%防げます。</p>
+    <pre><code class="language-php">$sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$username, $password]);</code></pre>
+    <p>この方法なら、たとえ<code>' OR 1=1 -- </code>が送られてきても、それは「コマンド」ではなく「<code>' OR 1=1 -- </code>という名前のユーザー」を探すための「安全なデータ」として扱われます。</p>
+
+    <hr>
+
+    <h2>レベル2: サービス連携層 (Docker-Compose & Nginx)</h2>
+    <p>しかし、この<code>index.php</code>は単体で動いているわけではありません。
+        実際には、「Nginx」「PHP-FPM」「MySQL」という3つの独立したサービスが連携して、このWebページを動かしています。</p>
+    <p>この「連携」を定義しているのが、プロジェクトの設計図である <code>docker-compose.yml</code> です。</p>
+
+    <h3>設計図 (<code>docker-compose.yml</code>)</h3>
+    <p><code>services:</code> の下に、3つのコンテナ（サービス）が定義されています。</p>
+    <ol>
+        <li><strong><code>nginx</code> (Webサーバー / ホール担当):</strong><br>
+            <code>ports: - "8080:80"</code> で、あなたのPCの8080番ポートをコンテナの80番ポートに繋いでいます。</li>
+        <li><strong><code>php-fpm</code> (PHP実行環境 / キッチン担当):</strong><br>
+            <code>nginx</code>からの指示を受けて、PHPコードを実行します。</li>
+        <li><strong><code>mysql</code> (データベース / 冷蔵庫):</strong><br>
+            <code>php-fpm</code>からの指示（SQL文）を受けて、データを返します。</li>
+    </ol>
+
+    <h3>NginxとPHPの「連携」 (<code>nginx/default.conf</code>)</h3>
+    <p>Nginx（ホール担当）は、PHP（キッチン担当）の仕事ができません。<br>
+        <code>nginx/default.conf</code> に書かれたこの設定が、2つのサービスを繋ぐ「連絡通路」の役割を果たしています。</p>
+    <pre><code class="language-nginx">location ~ \.php$ {
+    # .php へのアクセスが来たら...
+
+    # ...php-fpm サービスに処理を丸投げする
+    # 'php-fpm' は docker-compose.yml で定義したサービス名
+    fastcgi_pass php-fpm:9000;
+    
+    # ... (他、必要な設定) ...
+}</code></pre>
+    <p>この「3層構造」こそが、現代のWebアプリケーションの標準的な「構築」の形です。</p>
+
+    <hr>
+
+    <h2>レベル3: コンテナ構築層 (Dockerfile & init.sql)</h2>
+    <p>最後に、この「動く環境」そのものを、どうやってゼロから作り上げたのかを解説します。</p>
+
+    <h3>「通訳」のインストール (<code>php/Dockerfile</code>)</h3>
+    <p>この教材の作成中、<code>index.php</code>が<code>PDO</code>でMySQLに接続しようとした際、<code>could not find driver</code>というエラーが発生しました。</p>
+    <p>これは、標準のPHPコンテナに「MySQLとPDOで会話するための通訳（ドライバー）」が入っていなかったためです。<br>
+        <code>php/Dockerfile</code> に書かれたこの1行が、その「通訳」をコンテナに追加インストールしています。</p>
+    <pre><code class="language-dockerfile"># PHPの公式イメージをベースにする
+FROM php:8.2-fpm
+
+# MySQLと通信するための「通訳」2名（mysqli と pdo_mysql）を追加でインストール
+RUN docker-php-ext-install mysqli pdo_mysql</code></pre>
+    <p>この<code>Dockerfile</code>を <code>docker-compose.yml</code> の <code>build: ./php</code> で指定することで、標準とは違う「カスタムPHPコンテナ」が構築されました。</p>
+    
+    <h3>データベースの「種」 (<code>init/init.sql</code>)</h3>
+    <p>まっさらなMySQLコンテナには、<code>users</code>テーブルも<code>secret_flag</code>テーブルも存在しません。<br>
+        <code>init/init.sql</code> は、MySQLコンテナが**初回起動する時**に、データベース（`ctf_db`）と、これら2つのテーブルを自動で作成し、データ（admin, user, flag）を挿入するための「種」となるファイルです。</p>
+    <p><code>docker-compose.yml</code> のこの設定が、「種」をコンテナに渡しています。</p>
+    <pre><code class="language-yaml">  mysql:
+    volumes:
+      # ...
+      # このSQLファイルを、コンテナ起動時に自動実行するフォルダに配置する
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql</code></pre>
+
+    <h2>まとめ</h2>
+    <p>あなたが攻撃した「脆弱なログインフォーム」は、これらすべての「構築側の要素」が完璧に組み合わさって、初めて動作するものでした。</p>
+    <p>この問題を通じて、「攻撃」の技術と「構築」の仕組みの両面から、Webセキュリティの奥深さを学んでいただけたなら幸いです！</p>
+
+</body>
+</html>

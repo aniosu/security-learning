@@ -1,0 +1,43 @@
+version: '3.8'
+
+# 起動するサービス（コンテナ）を定義します
+services:
+
+  # 1. Nginx (Webサーバー / ホール担当)
+  nginx:
+    image: nginx:latest # Nginxの最新イメージ（設計図）を使用
+    ports:
+      - "8080:80" # あなたのPCの8080番ポートを、コンテナの80番ポートに接続
+    volumes:
+      # 「バインドマウント」で、今から作る ./src フォルダをコンテナ内に同期
+      - ./src:/var/www/html
+      # Nginx用の設定ファイル（これから作ります）をコンテナ内に同期
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on: # 起動順の制御
+      - php-fpm # php-fpm が起動してから nginx を起動する
+
+  # 2. PHP (PHP-FPM / キッチン担当)
+  php-fpm:
+    build: ./php # 今から作る ./php フォルダにある Dockerfile を使ってビルド
+    volumes:
+      # PHPコードも Nginx と同じ場所を同期
+      - ./src:/var/www/html
+    depends_on: # 起動順の制御
+      - mysql # mysql が起動してから php-fpm を起動する
+
+  # 3. MySQL (データベース / 冷蔵庫)
+  mysql:
+    image: mysql:8.0 # MySQL 8.0 のイメージを使用
+    environment: # データベースの初期設定（環境変数）
+      MYSQL_ROOT_PASSWORD: root_password # ルートのパスワード
+      MYSQL_DATABASE: ctf_db          # 作成するDB名
+      MYSQL_USER: ctf_user            # 作成するユーザー名
+      MYSQL_PASSWORD: ctf_password      # 作成するユーザーのパスワード
+    volumes:
+      # 「名前付きボリューム」でDBデータをPCに保存（永続化）
+      - mysql-data:/var/lib/mysql
+      - ./init/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+# データを永続化するための「名前付きボリューム」を定義
+volumes:
+  mysql-data:

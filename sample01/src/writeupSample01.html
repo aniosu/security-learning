@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>解説: 社内管理ポータル 攻略</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; }
+        h1, h2, h3 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.5em; }
+        h3 { font-size: 1.2em; }
+        code {
+            font-family: monospace;
+            background-color: #eee;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        pre code { padding: 0; background: none; }
+        .success-box {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📖 解説（Write-up）: 社内管理ポータル 攻略</h1>
+
+    <div class="success-box">
+        <strong>このページにたどり着いたあなた、フラグの獲得おめでとうございます！</strong><br>
+        この問題の真のフラグは、この解説ページにたどり着くことでした。
+    </div>
+
+    <p>この問題は、Webセキュリティの最も基本的かつ強力な脆弱性である<strong>「SQLインジェクション（SQLi）」</strong>を学ぶために設計されています。</p>
+
+    <hr>
+
+    <h2>🎯 この問題の「2つの学習目的」</h2>
+    <p>この問題には、SQLiを通じて学ぶべき2つの異なる目的が設定されていました。</p>
+    <ol>
+        <li><strong>目的A: 認証回避（"鍵"の破壊）</strong><br>
+            ログインフォームの認証ロジックそのものを破壊し、パスワードを知らなくても「管理者」としてログインできてしまう現象を体験する。</li>
+        <li><strong>目的B: データ窃取（"金庫"の強奪）</strong><br>
+            データベースに「質問（SQL文）」を直接送り込み、隠された「秘密のテーブル」から機密情報（＝真のフラグ）を盗み出す技術を学ぶ。</li>
+    </ol>
+
+    <hr>
+
+    <h2>1. 脆弱性の特定と「認証回避」（目的A）</h2>
+    <p>まず、このログインフォームに脆弱性があるかを探します。
+        <code>admin</code>や<code>'</code>（シングルクォート）などの怪しい文字列を入力すると、以下のようなエラーが表示されます。</p>
+    <pre><code>SQLエラー: SQLSTATE[42000]: Syntax error ...</code></pre>
+    <p>これは「サーバーがあなたの入力を、SQL文の一部として解釈しようとして失敗した」という<strong>強力なヒント</strong>です。ここから、SQLiが可能だと推測できます。</p>
+    
+    <p>（攻撃A-1: <code>admin' -- </code> や 攻撃A-2: <code>' OR 1=1 -- </code>）</p>
+    <p>これらの攻撃で、あなたは「管理者になれてしまう恐ろしい現象」を体験しました。
+        しかし、メッセージが示す通り、<strong>本当のフラグはここにはありませんでした。</strong>
+        ここからが本番です。</p>
+
+    <hr>
+
+    <h2>2. データベース情報の窃取（目的B）</h2>
+    <p>SQLiの真の恐ろしさである<strong><code>UNION</code>攻撃</strong>を使って、データベースから情報を直接抜き取ります。</p>
+
+    <h3>ステップ1: カラム数の特定</h3>
+    <p><code>UNION</code>攻撃は、前後の<code>SELECT</code>文のカラム数を一致させる必要があります。
+        「クエリ実行結果」に生データが表示されるこのページの特性（In-Band SQLi）を利用し、カラム数を探ります。</p>
+    <ul>
+        <li><strong>ペイロード (Username):</strong> <code>' UNION SELECT 1, 2, 3#</code></li>
+        <li><strong>結果:</strong> 「クエリ実行結果」に以下のように表示されます。
+            <pre><code>Array
+(
+    [id] => 1
+    [username] => 2
+    [password] => 3
+)</code></pre>
+        </li>
+        <li><strong>学び:</strong> これで、元の<code>SELECT</code>文のカラム数が<strong>3つ</strong>であることが確定しました。これが攻撃の「鍵穴の形」です。</li>
+    </ul>
+
+    <h3>ステップ2: テーブル名の「偵察」（推測からの脱却）</h3>
+    <div class="warning-box">
+        <strong>あなたの疑問「ヒントがなさすぎる」は、100%正しいです。</strong><br>
+        <code>secret_flag</code>というテーブル名を「推測」するのは、CTFでは「エスパー問（悪い問題）」と呼ばれます。
+        本物の攻撃者は「推測」ではなく**「偵察」**を行います。
+    </div>
+    
+    <p>すべてのMySQLデータベースには、<strong><code>information_schema</code></strong>（インフォメーション・スキーマ）という「データベースの地図」が格納された、特別なデータベースが必ず存在します。</p>
+    <p>この「地図」の中にある<code>tables</code>という目次を盗み見れば、テーブル名を「推測」する必要は一切ありません。</p>
+    
+    <ul>
+        <li><strong>ペイロード (Username):</strong> <code>' UNION SELECT 1, table_name, 3 FROM information_schema.tables#</code></li>
+    </ul>
+    
+    <p><strong>なぜこのペイロードか？</strong></p>
+    <ol>
+        <li>ステップ1で「3カラム」と分かっているので、<code>UNION</code>の後も3つ（<code>1</code>, <code>table_name</code>, <code>3</code>）を指定します。</li>
+        <li><code>1</code>と<code>3</code>は「埋め草（パディング）」です。</li>
+        <li>本当に知りたい情報である<strong><code>table_name</code></strong>（テーブル名）を、画面に表示されることがわかっている「2番目」のカラム位置に入れます。</li>
+    </ol>
+    
+    <ul>
+        <li><strong>結果:</strong> 「クエリ実行結果」に、このデータベースが持つ**すべてのテーブル名**が漏洩します。
+            <pre><code>Array
+(
+    [id] => 1
+    [username] => users
+    [password] => 3
+)
+Array
+(
+    [id] => 1
+    [username] => secret_flag
+    [password] => 3
+)
+(他にもあれば表示される)</code></pre>
+        </li>
+        <li><strong>学び:</strong> これで、<code>users</code>以外に<code>secret_flag</code>という怪しいテーブルが**論理的に**見つかりました。</li>
+    </ul>
+    <p>（※ちなみに、<code>information_schema.columns</code>を偵察すれば、カラム名（`flag_value`など）もすべて特定可能です）</p>
+
+    <h3>ステップ3: ターゲット攻撃（もはや推測ではない）</h3>
+    <p>ステップ2で**論理的に**特定した<code>secret_flag</code>テーブルをターゲットに、攻撃を仕掛けます。</p>
+    <ul>
+        <li><strong>ペイロード (Username):</strong> <code>' UNION SELECT * FROM secret_flag#</code></li>
+    </ul>
+    <p><strong>なぜ成功するか？</strong><br>
+        <code>secret_flag</code>テーブルも、たまたま3カラム（<code>id</code>, <code>flag_value</code>, <code>description</code>）でした。
+        ステップ1で特定した「3カラム」という「鍵穴の形」と一致したため、<code>UNION</code>が成功します。</p>
+    <ul>
+        <li><strong>結果:</strong> 「クエリ実行結果」に、<code>secret_flag</code>の中身がそのまま表示されます。
+            <pre><code>Array
+(
+    [id] => 1
+    [flag_value] => flag{Kaisetsu_Page_URL_ha_/writeup.html_desu}
+    [description] => ヒント: フラグは「/」から始まるURLのようです
+)</code></pre>
+        </li>
+    </ul>
+    <p><strong>これで、真のフラグ（このページのURL）の獲得に成功しました！</strong></p>
+
+    <hr>
+
+    <h2>🚧 どうすれば防げたのか？（対策）</h2>
+    <p>この攻撃が成功したのは、<code>index.php</code>がユーザーの入力を「SQL文（コマンド）」の一部として扱ってしまったからです。</p>
+    <p><strong>対策は「プレースホルダ（Prepared Statements）」を使うことです。</strong><br>
+        これは、「SQL文（コマンド）」と「ユーザー入力（データ）」を完全に分離する技術です。</p>
+
+    <h3>脆弱なコード</h3>
+    <pre><code class="language-php">$sql = "SELECT * FROM users WHERE username = '{$username}' ...";
+$stmt = $pdo->query($sql);</code></pre>
+
+    <h3>安全なコード（対策後）</h3>
+    <pre><code class="language-php">// 1. ユーザー入力の部分を「?」に置き換える
+$sql = "SELECT * FROM users WHERE username = ? AND password = ?";
+
+// 2. 「prepare」でSQL文（コマンド）を先にDBに送る
+$stmt = $pdo->prepare($sql);
+
+// 3. 「execute」で「?」に入れる「データ」を後から送る
+// これで、入力された ' OR 1=1-- は「ただの文字列」として扱われる
+$stmt->execute([$username, $password]);</code></pre>
+    <p>この方法を使えば、たとえ攻撃者が<code>' OR 1=1 -- </code>と入力しても、それは「コマンド」ではなく、「<code>' OR 1=1 -- </code>という名前のユーザー」を探す「データ」として扱われるため、攻撃は100%失敗します。</p>
+
+    <hr>
+    <p>この問題を通じて、SQLインジェクションの「認証回避」の恐ろしさと、「UNION攻撃」によるデータ窃取の技術、そしてその「対策」まで、すべてを学んでいただけたなら幸いです。</p>
+    
+    <hr>
+    <div class="info-box" style="background-color: #cce5ff; color: #004085; border: 1px solid #b8daff; padding: 15px; border-radius: 8px; text-align: center;">
+        <h2>💡 次のステップ: 「構築側」の視点</h2>
+        <p>「攻撃」の技術、お見事でした！</p>
+        <p>しかし、この教材のもう半分の目的は、<strong>「なぜ、この環境が脆弱だったのか」</strong>を構築側から理解することです。</p>
+        <p>Nginx, PHP, Dockerがどう連携し、この脆弱な環境を生み出したのか...その「設計図」を見てみませんか？</p>
+        <br>
+        <a href="build.html" style="display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+            「構築側」の解説 (build.html) へ進む
+        </a>
+    </div>
+    </body>
+</html>
+</body>
+</html>
