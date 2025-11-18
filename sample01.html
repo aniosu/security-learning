@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>問題01: 社内管理ポータル (SQLi) - Security Learning</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2980b9; margin-top: 30px; }
+        code { background: #eee; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+        pre { background: #2d3436; color: #ecf0f1; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .download-btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background-color: #27ae60;
+            color: white;
+            padding: 15px 0;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 5px;
+            margin: 30px 0;
+            transition: background-color 0.3s;
+        }
+        .download-btn:hover { background-color: #219150; }
+        .back-link { display: inline-block; margin-top: 20px; color: #7f8c8d; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+        .note { background-color: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <a href="index.html" class="back-link">← 問題一覧に戻る</a>
+        
+        <h1>Question 01: 社内管理ポータル</h1>
+        <p>ある企業の社内管理ポータルに脆弱性が見つかりました。<br>
+        環境を立ち上げ、認証を回避し、さらにデータベースの奥深くにある「真のフラグ」を特定してください。</p>
+
+        <div class="note">
+            <strong>学習ポイント:</strong> SQLインジェクション (Authentication Bypass, UNION Attack), Docker環境構築
+        </div>
+
+        <a href="https://github.com/aniosu/security-learning/archive/refs/heads/main.zip" class="download-btn">
+            📥 問題ファイルを一括ダウンロード (ZIP)
+        </a>
+        <p style="text-align: center; font-size: 0.9rem; color: #777;">
+            ※ ダウンロードしたZIPを解凍し、<code>sample01</code> フォルダを使用してください。
+        </p>
+
+        <h2>🚀 実行手順 (3ステップ)</h2>
+        
+        <h3>1. フォルダへ移動</h3>
+        <p>ダウンロードしたファイルを解凍し、ターミナル(WSL)で <code>sample01</code> フォルダを開きます。</p>
+        <pre><code>cd security-learning-main/sample01</code></pre>
+
+        <h3>2. 環境の起動</h3>
+        <p>以下のコマンドを実行して、Dockerコンテナを起動します。</p>
+        <pre><code>docker compose up -d --build</code></pre>
+
+        <h3>3. 攻撃開始</h3>
+        <p>起動が完了したら、ブラウザで以下のURLにアクセスしてください。</p>
+        <pre><code>http://localhost:8080</code></pre>
+
+        <hr>
+        <h2>解説 (Write-up)</h2>
+        <p>解けなかった場合や、答え合わせをしたい場合は、環境内の以下のURLへアクセスしてください。</p>
+        <ul>
+            <li><strong>攻撃の解説:</strong> <code>http://localhost:8080/writeupSample01.html</code></li>
+            <li><strong>構築の解説:</strong> <code>http://localhost:8080/build.html</code></li>
+        </ul>
+
+    </div>
+
+</body>
+</html>
